@@ -31,6 +31,12 @@
 - **Detection failed, and I found out why.** The lab's MySQL logon parser hid real logins, including the bot's first successful one. I reproduced the bug on the live server: one service restart hid 6 of 9 successful logins. I wrote a fixed query (Hunt 6.1).
 - **The response was slow.** The MySQL alert fired 13 minutes *after* the wipe, and both incidents still had the status New when I isolated the host.
 
+### Where the attacks came from
+
+![Attack source map](images/attack-map.png)
+
+*Attack sources by geolocation (Defender Advanced Hunting, Sentinel workbook). Size/colour = attempts. The four IPs that actually logged in (36.62.38.51, 200.75.2.138, 218.147.202.136, 105.155.100.147) were low-volume; the large bubbles were sprayers that never got in.*
+
 ### Attack flow
 
 ```mermaid
@@ -562,5 +568,27 @@ NTANetAnalytics
 </details>
 
 ---
+
+<details>
+<summary><b>Hunt 10.1: geolocation of attack sources (map)</b></summary>
+
+```kql
+let Start = datetime(2026-09-20T22:24:02Z); let End = datetime(2026-09-25T22:11:29Z);
+let Win = DeviceLogonEvents
+| where DeviceName == "corp-ot26-0400a" and Timestamp between (Start .. End) and RemoteIPType == "Public"
+| summarize Attempts = count() by RemoteIP, Service = "RDP/SMB";
+let Sql = MySQLAudit_CL
+| where TimeGenerated between (Start .. End) and _ResourceId endswith "corp-ot26-0400ap" and RawData has "Connect"
+| extend RemoteIP = extract(@"@(\d+\.\d+\.\d+\.\d+)", 1, RawData)
+| where isnotempty(RemoteIP)
+| summarize Attempts = count() by RemoteIP, Service = "MySQL";
+union Win, Sql
+| where RemoteIP != "<analyst IP redacted>"
+| extend Geo = geo_info_from_ip_address(RemoteIP)
+| extend Latitude = toreal(Geo.latitude), Longitude = toreal(Geo.longitude), Country = tostring(Geo.country)
+| where isnotnull(Latitude)
+```
+Rendered as a Map visualization in a Sentinel workbook (size and heatmap colour by Attempts).
+</details>
 
 *Personal lab project. The attacker IPs and IOCs are real internet traffic observed against my honeypot and are shared for defensive use. The lab data was synthetic.*
