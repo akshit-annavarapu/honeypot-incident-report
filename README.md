@@ -567,8 +567,6 @@ NTANetAnalytics
 ![Hunt 8.3](images/hunt-8-3.png)
 </details>
 
----
-
 <details>
 <summary><b>Hunt 10.1: geolocation of attack sources (map)</b></summary>
 
@@ -590,5 +588,7 @@ union Win, Sql
 ```
 Rendered as a Map visualization in a Sentinel workbook (size and heatmap colour by Attempts).
 </details>
+
+---
 
 *Personal lab project. The attacker IPs and IOCs are real internet traffic observed against my honeypot and are shared for defensive use. The lab data was synthetic.*
